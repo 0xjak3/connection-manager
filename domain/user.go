@@ -20,7 +20,7 @@ type User struct {
 }
 
 func NewUser(email, passwordHash string, now time.Time) (User, error) {
-	email, err := normalizeEmail(email)
+	email, err := ParseEmail(email)
 	if err != nil {
 		return User{}, err
 	}
@@ -37,7 +37,7 @@ func NewUser(email, passwordHash string, now time.Time) (User, error) {
 }
 
 func (u *User) ChangeEmail(email string, now time.Time) error {
-	email, err := normalizeEmail(email)
+	email, err := ParseEmail(email)
 	if err != nil {
 		return err
 	}
@@ -55,9 +55,10 @@ func (u *User) ChangePassword(passwordHash string, now time.Time) error {
 	return nil
 }
 
-// normalizeEmail trims and lowercases the email and checks it is a bare
+// ParseEmail trims and lowercases the email and checks it is a bare
 // addr-spec ("local@domain"), rejecting display names and address lists.
-func normalizeEmail(email string) (string, error) {
+// It is pure, so a usecase can reject bad input before expensive work.
+func ParseEmail(email string) (string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if email == "" {
 		return "", fmt.Errorf("%w: email is required", ErrValidation)

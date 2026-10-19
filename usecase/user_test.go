@@ -120,25 +120,30 @@ func ptr(s string) *string { return &s }
 
 func TestUserUsecase_Create(t *testing.T) {
 	tests := []struct {
-		name    string
-		in      CreateUserInput
-		repoErr error
-		hashErr error
-		wantErr error
+		name       string
+		in         CreateUserInput
+		repoErr    error
+		hashErr    error
+		wantErr    error
+		wantHashed int
 	}{
-		{name: "happy path", in: CreateUserInput{Email: " Alice@Example.com ", Password: "secret123"}},
-		{name: "domain error", in: CreateUserInput{Email: "nope", Password: "secret123"}, wantErr: domain.ErrValidation},
-		{name: "email taken", in: CreateUserInput{Email: "a@example.com", Password: "secret123"}, repoErr: domain.ErrEmailTaken, wantErr: domain.ErrEmailTaken},
-		{name: "repository error", in: CreateUserInput{Email: "a@example.com", Password: "secret123"}, repoErr: errDB, wantErr: errDB},
-		{name: "hasher error", in: CreateUserInput{Email: "a@example.com", Password: "secret123"}, hashErr: errHash, wantErr: errHash},
+		{name: "happy path", in: CreateUserInput{Email: " Alice@Example.com ", Password: "secret123"}, wantHashed: 1},
+		// Cheap before expensive: a bad email is rejected without hashing.
+		{name: "invalid email is rejected before hashing", in: CreateUserInput{Email: "nope", Password: "secret123"}, wantErr: domain.ErrValidation},
+		{name: "blank email is rejected before hashing", in: CreateUserInput{Email: "   ", Password: "secret123"}, wantErr: domain.ErrValidation},
+		{name: "email taken", in: CreateUserInput{Email: "a@example.com", Password: "secret123"}, repoErr: domain.ErrEmailTaken, wantErr: domain.ErrEmailTaken, wantHashed: 1},
+		{name: "repository error", in: CreateUserInput{Email: "a@example.com", Password: "secret123"}, repoErr: errDB, wantErr: errDB, wantHashed: 1},
+		{name: "hasher error", in: CreateUserInput{Email: "a@example.com", Password: "secret123"}, hashErr: errHash, wantErr: errHash, wantHashed: 1},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := newFakeUserRepo()
 			repo.err = tc.repoErr
-			uc := NewUserUsecase(repo, &fakeHasher{err: tc.hashErr}, &fixedClock{now: t0})
+			hasher := &fakeHasher{err: tc.hashErr}
+			uc := NewUserUsecase(repo, hasher, &fixedClock{now: t0})
 
 			got, err := uc.Create(context.Background(), tc.in)
+			require.Equal(t, tc.wantHashed, hasher.calls)
 			if tc.wantErr != nil {
 				require.ErrorIs(t, err, tc.wantErr)
 				require.Equal(t, domain.User{}, got)
@@ -249,6 +254,25 @@ func TestUserUsecase_Update(t *testing.T) {
 			name:    "hasher error",
 			in:      func(id uuid.UUID) UpdateUserInput { return UpdateUserInput{ID: id, Password: ptr("new-password")} },
 			hashErr: errHash, wantErr: errHash, wantHashed: 1,
+		},
+		{
+			// The use case is meaningless without a field to change: no load, no write.
+			name:    "no fields is a validation error",
+			in:      func(id uuid.UUID) UpdateUserInput { return UpdateUserInput{ID: id} },
+			wantErr: domain.ErrValidation,
+		},
+		{
+			name:    "no fields is rejected before loading",
+			in:      func(uuid.UUID) UpdateUserInput { return UpdateUserInput{ID: uuid.Must(uuid.NewV7())} },
+			wantErr: domain.ErrValidation,
+		},
+		{
+			// Cheap before expensive: a bad email is rejected before loading and hashing.
+			name: "invalid email is rejected before loading and hashing",
+			in: func(uuid.UUID) UpdateUserInput {
+				return UpdateUserInput{ID: uuid.Must(uuid.NewV7()), Email: ptr("not-an-email"), Password: ptr("new-password")}
+			},
+			wantErr: domain.ErrValidation,
 		},
 	}
 	for _, tc := range tests {

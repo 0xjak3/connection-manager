@@ -15,10 +15,7 @@ type Handlers struct {
 
 // New creates the Fiber app and registers every route.
 func New(h Handlers) *fiber.App {
-	app := fiber.New(fiber.Config{
-		ErrorHandler:    handler.ErrorHandler,
-		StructValidator: handler.NewStructValidator(),
-	})
+	app := fiber.New(handler.FiberConfig())
 	app.Use(recover.New())
 	app.Use(logger.New())
 

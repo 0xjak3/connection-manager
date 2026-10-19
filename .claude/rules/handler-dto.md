@@ -13,6 +13,8 @@ paths:
 - `XxxRequest` structs have `json` + `validate` tags. `XxxResponse` structs have `json` tags. JSON keys are snake_case. Times are `time.Time` (serialized as RFC 3339).
 - Plain data only: no methods with logic, no project imports.
 - PATCH requests use pointer fields (`*string`) with `omitnil`. Cross-field rules are expressed with validator tags (`required_without=Password`). If a rule can't be expressed in tags, register a custom validation in `handler/validator.go`. Never put imperative checks in dto.
+- A value that needs trimming before format validation uses a custom tag registered in `handler/validator.go` (e.g. `trimmed_email`). The dto value is passed on unchanged and the domain still normalizes it.
+- JSON keys are the snake_case of the Go field name, always. `validationMessage` relies on this to translate field names in tag params (`required_without=Password` → `password`). Never add a `json` tag that breaks this mapping.
 - `max`/`min` count characters (runes). Byte limits (bcrypt's 72 bytes) are enforced in the service/domain and come back as `domain.ErrValidation`.
 - Shared envelopes live in `dto/response.go`:
 

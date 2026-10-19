@@ -52,6 +52,35 @@ func TestNewUser(t *testing.T) {
 	}
 }
 
+func TestParseEmail(t *testing.T) {
+	tests := []struct {
+		name    string
+		in      string
+		want    string
+		wantErr error
+	}{
+		{"valid", "alice@example.com", "alice@example.com", nil},
+		{"trims and lowercases", "  Alice@Example.COM \n", "alice@example.com", nil},
+		{"empty", "", "", ErrValidation},
+		{"blank", " \t ", "", ErrValidation},
+		{"no at sign", "alice.example.com", "", ErrValidation},
+		{"display name form", "Alice <alice@example.com>", "", ErrValidation},
+		{"two addresses", "a@example.com, b@example.com", "", ErrValidation},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ParseEmail(tc.in)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				require.Empty(t, got)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestNewUser_UniqueIDs(t *testing.T) {
 	a, err := NewUser("a@example.com", "h", t0)
 	require.NoError(t, err)
@@ -126,4 +155,7 @@ func TestUser_ChangePassword(t *testing.T) {
 func TestUserErrors_WrapKinds(t *testing.T) {
 	require.ErrorIs(t, ErrUserNotFound, ErrNotFound)
 	require.ErrorIs(t, ErrEmailTaken, ErrConflict)
+	// The message is sent to API clients as-is (architecture.md → Errors).
+	require.Equal(t, "user not found", ErrUserNotFound.Error())
+	require.Equal(t, "conflict: email already taken", ErrEmailTaken.Error())
 }

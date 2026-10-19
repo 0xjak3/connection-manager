@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 
@@ -31,11 +32,15 @@ type UpdateUserInput struct {
 }
 
 func (u *UserUsecase) Create(ctx context.Context, in CreateUserInput) (domain.User, error) {
+	email, err := domain.ParseEmail(in.Email) // cheap check before hashing
+	if err != nil {
+		return domain.User{}, err
+	}
 	hash, err := u.hasher.Hash(ctx, in.Password)
 	if err != nil {
 		return domain.User{}, err
 	}
-	user, err := domain.NewUser(in.Email, hash, u.clock.Now())
+	user, err := domain.NewUser(email, hash, u.clock.Now())
 	if err != nil {
 		return domain.User{}, err
 	}
@@ -54,13 +59,23 @@ func (u *UserUsecase) List(ctx context.Context) ([]domain.User, error) {
 }
 
 func (u *UserUsecase) Update(ctx context.Context, in UpdateUserInput) (domain.User, error) {
+	if in.Email == nil && in.Password == nil {
+		return domain.User{}, fmt.Errorf("%w: at least one of email or password is required", domain.ErrValidation)
+	}
+	var email string
+	if in.Email != nil {
+		var err error
+		if email, err = domain.ParseEmail(*in.Email); err != nil { // cheap check before loading and hashing
+			return domain.User{}, err
+		}
+	}
 	user, err := u.repo.GetByID(ctx, in.ID)
 	if err != nil {
 		return domain.User{}, err
 	}
 	now := u.clock.Now()
 	if in.Email != nil {
-		if err := user.ChangeEmail(*in.Email, now); err != nil {
+		if err := user.ChangeEmail(email, now); err != nil {
 			return domain.User{}, err
 		}
 	}
