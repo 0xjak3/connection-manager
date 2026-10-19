@@ -8,9 +8,9 @@ paths:
 
 # Handler, dto and router rules (Fiber v3)
 
-## dto (`dto/dto.gen.go`, generated from `openapi.yaml`)
+## dto (`dto/dto.gen.go`, generated from the spec in `api/`)
 
-- dto structs are **generated** by oapi-codegen from `openapi.yaml` (`.claude/rules/openapi.md`). To change a request or response, change the spec and run `make generate`. Never edit `dto/dto.gen.go`; the hook blocks it.
+- dto structs are **generated** by oapi-codegen from the spec in `api/` (`.claude/rules/openapi.md`). To change a request or response, change the spec and run `make generate`. Never edit `dto/dto.gen.go`; the hook blocks it.
 - Envelopes are concrete per resource (`UserResponse{Data User}`, `UserListResponse{Data []User}`) plus `ErrorResponse{Error ErrorBody}`. There is no generic envelope.
 - Validate tags come from `x-oapi-codegen-extra-tags` in the spec and must match the schema constraints.
 - PATCH requests are pointer fields (`*string`, `omitempty`) with `omitnil` in the validate tag. Cross-field rules use validator tags (`required_without=Password`). If a rule can't be expressed in tags, register a custom validation in `handler/validator.go`.

@@ -1,6 +1,6 @@
 ---
 name: new-feature
-description: Add a feature to connection_manager end-to-end (openapi.yaml → e2e → migration → sqlc → domain → repository → usecase → service → dto/handler → route → tests), bootstrapping the project first if it is still empty. Use when adding an endpoint, entity or use case.
+description: Add a feature to connection_manager end-to-end (api spec → e2e → migration → sqlc → domain → repository → usecase → service → dto/handler → route → tests), bootstrapping the project first if it is still empty. Use when adding an endpoint, entity or use case.
 ---
 
 # New feature
@@ -11,9 +11,9 @@ Work through the steps in order, following the TDD loop in `.claude/rules/tdd.md
 
 Write down what you will build before touching code: entity fields, invariants, state transitions, endpoints (method, path, request, response, error cases → domain error kinds). If anything is missing, stop and ask. Don't invent business rules.
 
-## 0.4. Contract: openapi.yaml
+## 0.4. Contract: the spec in api/
 
-Add the operations and schemas to `openapi.yaml` per `.claude/rules/openapi.md` (schemas named like the dto types, error codes listed, validate tags = schema constraints). Run `make generate`.
+Add `api/paths/<resource>.yaml` and `api/schemas/<resource>.yaml`, and register them in `api/openapi.yaml`, per `.claude/rules/openapi.md` (schemas named like the dto types, error codes listed, validate tags = schema constraints). Run `make generate`.
 
 ## 0.5. Red: e2e scenarios first
 
@@ -24,7 +24,7 @@ Write the scenarios for this feature in `test/e2e/<feature>_test.go` (`.claude/r
 1. `go get github.com/gofiber/fiber/v3 github.com/jackc/pgx/v5 github.com/google/uuid github.com/go-playground/validator/v10 github.com/stretchr/testify`
 2. `sqlc.yaml` from `.claude/rules/repository.md`. Create `db/migrations/` and `db/queries/`.
 3. `domain/errors.go` (kind sentinels), `service/clock.go` (`SystemClock`), `repository/errors.go` (`translateErr`).
-4. `openapi.yaml` + `oapi-codegen.yaml` (dto generated), `handler/errors.go` (`ErrorHandler`), `handler/validator.go` (adapter implementing `fiber.StructValidator`), `handler/config.go` (`FiberConfig()`).
+4. `api/` spec + `tools/openapibundle` + `oapi-codegen.yaml` (dto generated), `handler/errors.go` (`ErrorHandler`), `handler/validator.go` (adapter implementing `fiber.StructValidator`), `handler/config.go` (`FiberConfig()`).
 5. `util/config.go`: env `HTTP_ADDR` (default `:8080`) and `DATABASE_URL` (required). Only `cmd` imports `util`.
 6. `router/router.go` with `GET /healthz`, and `cmd/api/main.go` with wiring + graceful shutdown.
 7. `docker-compose.yml` (Postgres for dev, plus a separate DB for integration tests) and a `Makefile` (`generate`, `migrate-up`, `test`, `test-integration`, `run`). Update the Commands section in `.claude/CLAUDE.md`.

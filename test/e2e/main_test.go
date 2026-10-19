@@ -15,6 +15,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/getkin/kin-openapi/routers"
+	"github.com/getkin/kin-openapi/routers/gorillamux"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -27,6 +30,10 @@ const postgresImage = "postgres:17"
 
 // baseURL is the root URL of the API binary under test, e.g. http://127.0.0.1:54321.
 var baseURL string
+
+// specRouter matches requests to operations in openapi.yaml; the HTTP helper
+// uses it to validate every response against the contract.
+var specRouter routers.Router
 
 func TestMain(m *testing.M) {
 	os.Exit(run(m))
@@ -87,6 +94,10 @@ func run(m *testing.M) int {
 	}
 	baseURL = "http://" + addr
 
+	if specRouter, err = loadSpec(filepath.Join(root, "openapi.yaml"), baseURL); err != nil {
+		return fail("load openapi.yaml", err)
+	}
+
 	srv := exec.Command(bin)
 	srv.Dir = root
 	srv.Env = append(os.Environ(), "DATABASE_URL="+dsn, "HTTP_ADDR="+addr)
@@ -106,6 +117,21 @@ func run(m *testing.M) int {
 	}
 
 	return m.Run()
+}
+
+// loadSpec loads and validates openapi.yaml and returns a router over it. The
+// spec declares no servers, so the router is pointed at the API under test.
+func loadSpec(path, serverURL string) (routers.Router, error) {
+	loader := openapi3.NewLoader()
+	doc, err := loader.LoadFromFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := doc.Validate(loader.Context); err != nil {
+		return nil, fmt.Errorf("invalid spec: %w", err)
+	}
+	doc.Servers = openapi3.Servers{{URL: serverURL}}
+	return gorillamux.NewRouter(doc)
 }
 
 func migrateUp(root, dsn string) error {

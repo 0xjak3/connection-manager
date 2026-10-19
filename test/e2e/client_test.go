@@ -4,6 +4,7 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/google/uuid"
 )
 
@@ -62,7 +64,36 @@ func doRaw(t *testing.T, method, path string, body []byte, contentType string) (
 	if err != nil {
 		t.Fatalf("read response body of %s %s: %v", method, path, err)
 	}
+	validateResponse(t, req, resp, raw)
 	return resp.StatusCode, raw
+}
+
+// validateResponse checks the response against the operation openapi.yaml declares
+// for the request: the status must be declared and the body must match its schema.
+// The request itself is not validated, because scenarios send invalid requests on purpose.
+func validateResponse(t *testing.T, req *http.Request, resp *http.Response, raw []byte) {
+	t.Helper()
+	route, pathParams, err := specRouter.FindRoute(req)
+	if err != nil {
+		t.Fatalf("contract: %s %s is not declared in openapi.yaml: %v", req.Method, req.URL.Path, err)
+	}
+	in := &openapi3filter.ResponseValidationInput{
+		RequestValidationInput: &openapi3filter.RequestValidationInput{
+			Request:    req,
+			PathParams: pathParams,
+			Route:      route,
+		},
+		Status: resp.StatusCode,
+		Header: resp.Header,
+		Options: &openapi3filter.Options{
+			IncludeResponseStatus: true, // an undeclared status fails
+			MultiError:            true,
+		},
+	}
+	in.SetBodyBytes(raw)
+	if err := openapi3filter.ValidateResponse(context.Background(), in); err != nil {
+		t.Errorf("contract: %s %s → %d does not match openapi.yaml: %v\nbody: %s", req.Method, req.URL.Path, resp.StatusCode, err, raw)
+	}
 }
 
 func decode(t *testing.T, raw []byte) map[string]any {
