@@ -1,0 +1,38 @@
+name: connection_manager
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: cm
+      POSTGRES_PASSWORD: cm
+      POSTGRES_DB: connection_manager
+    ports:
+      - "127.0.0.1:5440:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cm -d connection_manager"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Throwaway database for integration tests (no volume; data lives in tmpfs).
+  db-test:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: cm
+      POSTGRES_PASSWORD: cm
+      POSTGRES_DB: connection_manager_test
+    ports:
+      - "127.0.0.1:5441:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cm -d connection_manager_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  db-data:
