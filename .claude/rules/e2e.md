@@ -23,7 +23,8 @@ The production entry point and wiring run exactly as in deployment. Nothing is c
 - **Everything goes through the HTTP API.** Create, read, change and delete data with the same requests a user would send.
 - **Seed only when no API exists.** If a scenario needs state that no endpoint can create yet (e.g. an admin-only flag), insert it with SQL through the container's connection, in `test/e2e/seed_test.go`. Every seed function has a comment naming the missing endpoint, and it is deleted once that endpoint exists. Never seed something an API can create.
 - **Never read the database to assert.** Verify through the API (e.g. after DELETE, `GET` returns 404). If the only way to observe a behaviour is the DB, ask whether the API is missing something.
-- **Black box:** `test/e2e` imports **no** project packages (`connection_manager/...`). Request and response shapes are written as local structs or `map[string]any` in the test, so the tests also catch accidental API contract changes. The hook enforces this.
+- **Black box:** `test/e2e` imports **no** project packages (`connection_manager/...`, including the generated `dto`). Request and response shapes are written as local structs or `map[string]any` in the test. The hook enforces this.
+- **Contract check on every call:** the HTTP helper validates every response against `openapi.yaml` with kin-openapi (`.claude/rules/openapi.md` → Contract testing). Scenarios assert behaviour; the helper asserts the contract.
 
 ## Writing scenarios
 
@@ -36,8 +37,8 @@ The production entry point and wiring run exactly as in deployment. Nothing is c
 ## Files and running
 
 ```
-test/e2e/main_test.go      TestMain: container + migrations + binary + healthz wait
-test/e2e/client_test.go    HTTP helper, uniqueEmail, assertions
+test/e2e/main_test.go      TestMain: container + migrations + binary + healthz wait + load openapi.yaml
+test/e2e/client_test.go    HTTP helper (validates responses against the spec), uniqueEmail, assertions
 test/e2e/seed_test.go      only if a seed is unavoidable (see above)
 test/e2e/<feature>_test.go scenarios per feature (users_test.go, ...)
 ```

@@ -18,7 +18,7 @@ Go HTTP API. Purpose and feature set are **not defined yet**. Do not invent enti
 cmd/api/main.go      composition root: config → pgxpool → repositories → services → usecases → handlers → router → listen
 router/              Fiber app setup (error handler, middleware) + route table
 handler/             HTTP: bind/validate dto → call usecase → map domain → dto response
-dto/                 request/response structs (json + validate tags). No logic, no project imports
+dto/                 request/response structs GENERATED from openapi.yaml (dto.gen.go), never edit by hand
 usecase/             application logic: orchestrates domain + repositories + services. Declares its ports (interfaces)
 domain/              entities, value objects, domain errors, business rules as methods
 service/             adapters to 3rd-party / external capabilities (HTTP APIs, email, clock, crypto, …)
@@ -29,6 +29,8 @@ db/queries/          sqlc query files, one per table/aggregate
 util/                generic helpers with no business meaning (config, logger)
 test/                end-to-end API tests (build tag `e2e`)
 sqlc.yaml
+openapi.yaml         API contract (spec-first): source of dto and of e2e contract checks
+oapi-codegen.yaml    dto generator config
 ```
 
 ## Request flow
@@ -48,9 +50,9 @@ HTTP ◀── handler ◀──domain → dto── usecase (returns domain)
 4. Interfaces are declared by their consumer (`usecase/ports.go`, small interfaces in handler), and implemented by repository/service.
 5. Errors: repository/service translate infra errors into domain errors; the router's error handler is the only place that maps domain errors to HTTP status.
 6. `context.Context` is the first parameter of every usecase, repository and service method.
-7. **TDD, outside in:** write a failing e2e scenario first, implement, then make it pass (`.claude/rules/tdd.md`). E2E tests use the API like a real user, against a throwaway container (`.claude/rules/e2e.md`).
+7. **Spec-first, TDD outside in:** update `openapi.yaml` first (`.claude/rules/openapi.md`), write a failing e2e scenario, implement, then make it pass (`.claude/rules/tdd.md`). E2E tests use the API like a real user, against a throwaway container (`.claude/rules/e2e.md`).
 
-Per-layer details are in `.claude/rules/`: `tdd.md`, `e2e.md`, `architecture.md`, `domain.md`, `repository.md`, `usecase-service.md`, `handler-dto.md`, `testing.md`.
+Per-layer details are in `.claude/rules/`: `tdd.md`, `openapi.md`, `e2e.md`, `architecture.md`, `domain.md`, `repository.md`, `usecase-service.md`, `handler-dto.md`, `testing.md`.
 To add a feature end-to-end (and bootstrap the project on first use), follow `.claude/skills/new-feature/SKILL.md`.
 
 ## Commands (run from the project root)

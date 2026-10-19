@@ -23,6 +23,11 @@ if [[ "$rel" == repository/sqlcgen/* ]]; then
   exit 2
 fi
 
+if [[ "$rel" == dto/*.gen.go ]]; then
+  echo "dto/*.gen.go is generated from openapi.yaml. Edit openapi.yaml and run 'make generate' instead." >&2
+  exit 2
+fi
+
 [[ -f "$file" ]] || exit 0
 gofmt -w "$file" 2>/dev/null # syntax errors are left for the compiler to report
 

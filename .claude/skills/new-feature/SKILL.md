@@ -1,6 +1,6 @@
 ---
 name: new-feature
-description: Add a feature to connection_manager end-to-end (migration → sqlc → domain → repository → usecase → service → dto/handler → route → tests), bootstrapping the project first if it is still empty. Use when adding an endpoint, entity or use case.
+description: Add a feature to connection_manager end-to-end (openapi.yaml → e2e → migration → sqlc → domain → repository → usecase → service → dto/handler → route → tests), bootstrapping the project first if it is still empty. Use when adding an endpoint, entity or use case.
 ---
 
 # New feature
@@ -11,6 +11,10 @@ Work through the steps in order, following the TDD loop in `.claude/rules/tdd.md
 
 Write down what you will build before touching code: entity fields, invariants, state transitions, endpoints (method, path, request, response, error cases → domain error kinds). If anything is missing, stop and ask. Don't invent business rules.
 
+## 0.4. Contract: openapi.yaml
+
+Add the operations and schemas to `openapi.yaml` per `.claude/rules/openapi.md` (schemas named like the dto types, error codes listed, validate tags = schema constraints). Run `make generate`.
+
 ## 0.5. Red: e2e scenarios first
 
 Write the scenarios for this feature in `test/e2e/<feature>_test.go` (`.claude/rules/e2e.md`). If `test/e2e/main_test.go` doesn't exist yet, build the harness first. Run `make test-e2e` and confirm the scenarios fail for the right reason (404/405, wrong status or body). Keep that output. Don't edit these scenarios during steps 2–8.
@@ -20,7 +24,7 @@ Write the scenarios for this feature in `test/e2e/<feature>_test.go` (`.claude/r
 1. `go get github.com/gofiber/fiber/v3 github.com/jackc/pgx/v5 github.com/google/uuid github.com/go-playground/validator/v10 github.com/stretchr/testify`
 2. `sqlc.yaml` from `.claude/rules/repository.md`. Create `db/migrations/` and `db/queries/`.
 3. `domain/errors.go` (kind sentinels), `service/clock.go` (`SystemClock`), `repository/errors.go` (`translateErr`).
-4. `dto/response.go`, `handler/errors.go` (`ErrorHandler`), `handler/validator.go` (adapter implementing `fiber.StructValidator`), `handler/config.go` (`FiberConfig()`).
+4. `openapi.yaml` + `oapi-codegen.yaml` (dto generated), `handler/errors.go` (`ErrorHandler`), `handler/validator.go` (adapter implementing `fiber.StructValidator`), `handler/config.go` (`FiberConfig()`).
 5. `util/config.go`: env `HTTP_ADDR` (default `:8080`) and `DATABASE_URL` (required). Only `cmd` imports `util`.
 6. `router/router.go` with `GET /healthz`, and `cmd/api/main.go` with wiring + graceful shutdown.
 7. `docker-compose.yml` (Postgres for dev, plus a separate DB for integration tests) and a `Makefile` (`generate`, `migrate-up`, `test`, `test-integration`, `run`). Update the Commands section in `.claude/CLAUDE.md`.
@@ -46,9 +50,9 @@ Add the ports to `usecase/ports.go`, then write `usecase/<aggregate>.go` with in
 
 `service/<name>.go` implementing a usecase port. Domain/primitive types only at its boundary.
 
-## 7. dto + handler
+## 7. handler (dto already generated in 0.4)
 
-`dto/<aggregate>.go`, `handler/<aggregate>.go` with a consumer interface, and `handler/<aggregate>_mapper.go`. Handler tests build `fiber.New(handler.FiberConfig())` and use `app.Test` with a fake usecase: success, validation failure (400), and one domain error mapping. → `.claude/rules/handler-dto.md`
+`handler/<aggregate>.go` with a consumer interface, and `handler/<aggregate>_mapper.go`. Handler tests build `fiber.New(handler.FiberConfig())` and use `app.Test` with a fake usecase: success, validation failure (400), and one domain error mapping. → `.claude/rules/handler-dto.md`
 
 ## 8. Route + wiring
 
