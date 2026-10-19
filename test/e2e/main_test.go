@@ -94,7 +94,7 @@ func run(m *testing.M) int {
 	}
 	baseURL = "http://" + addr
 
-	if specRouter, err = loadSpec(filepath.Join(root, "openapi.yaml"), baseURL); err != nil {
+	if specRouter, err = loadSpec(filepath.Join(root, "api", "openapi.gen.yaml"), baseURL); err != nil {
 		return fail("load openapi.yaml", err)
 	}
 

@@ -1,0 +1,12 @@
+openapi: 3.0.3
+info:
+  title: inline component fixture
+  version: "1"
+paths: {}
+components:
+  schemas:
+    Thing:
+      type: object
+      properties:
+        name:
+          type: string

@@ -1,0 +1,9 @@
+package: dto
+output: dto/dto.gen.go
+generate:
+  models: true
+output-options:
+  skip-prune: true
+  name-normalizer: ToCamelCaseWithInitialisms
+compatibility:
+  always-prefix-enum-values: true

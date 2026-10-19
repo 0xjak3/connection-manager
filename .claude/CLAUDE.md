@@ -63,14 +63,15 @@ To add a feature end-to-end (and bootstrap the project on first use), follow `.c
 make db-up              # docker compose (project `connection_manager`): dev Postgres 17 on 127.0.0.1:5440, test Postgres on 127.0.0.1:5441
 make migrate-up         # apply db/migrations to the dev DB (migrate CLI if installed, else the migrate/migrate image)
 make migrate-down       # roll back the last migration on the dev DB
-make generate           # sqlc generate (after changing db/queries or db/migrations)
+make generate           # bundle api/ → api/openapi.gen.yaml, oapi-codegen → dto/dto.gen.go, sqlc generate (after changing api/, db/queries or db/migrations)
+make check-generated    # regenerate into tmp/_gen and diff against api/openapi.gen.yaml, dto/dto.gen.go; sqlc diff (writes no project files)
 make test               # go test ./...  (unit tests, no DB needed)
 make test-integration   # starts the test DB, then go test -tags=integration ./repository/...
 make run                # go run ./cmd/api against the dev DB (HTTP_ADDR defaults to :8080)
 make db-down            # docker compose down (dev data volume is kept; test DB is tmpfs)
 make lint-layers        # layer import check over every .go file
 make test-e2e           # e2e: throwaway Postgres container + real binary, HTTP only (needs Docker)
-make check              # lint-layers + vet + build + unit tests + sqlc vet (Definition of Done, no DB)
+make check              # lint-layers + check-generated + vet + build + unit tests + sqlc vet (Definition of Done, no DB)
 
 go build ./...
 go vet ./...
@@ -83,7 +84,7 @@ Env: `DATABASE_URL` (required by the API; Makefile default `postgres://cm:cm@loc
 ## Definition of Done
 
 - [ ] E2E scenarios for the change exist, were seen failing first (red), and `make test-e2e` now passes (green)
-- [ ] `make check` passes (layer check, vet, build, unit tests, sqlc vet; gofmt runs automatically on every edit)
+- [ ] `make check` passes (layer check, generated-code freshness, vet, build, unit tests, sqlc vet; gofmt runs automatically on every edit)
 - [ ] If repository changed: `make test-integration` passes
 - [ ] If SQL changed: `sqlc generate` was run and the generated code is up to date
 - [ ] Every new migration has both up and down files

@@ -1,0 +1,11 @@
+parameters:
+  - $ref: ../parameters.yaml#/ID
+get:
+  operationId: getThing
+  responses:
+    "200":
+      description: The thing.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/thing.yaml#/Thing

@@ -1,0 +1,10 @@
+openapi: 3.0.3
+info:
+  title: external response fixture
+  version: "1"
+paths:
+  /things:
+    $ref: ./paths/things.yaml
+components:
+  schemas:
+    Thing: { $ref: ./schemas/thing.yaml#/Thing }

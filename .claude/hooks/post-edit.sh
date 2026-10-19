@@ -30,7 +30,7 @@ if [[ "$rel" == repository/sqlcgen/* ]]; then
 fi
 
 if [[ "$rel" == dto/*.gen.go ]]; then
-  echo "dto/*.gen.go is generated from openapi.yaml. Edit openapi.yaml and run 'make generate' instead." >&2
+  echo "dto/*.gen.go is generated from the spec. Edit api/openapi.yaml, api/paths/*.yaml or api/schemas/*.yaml and run 'make generate' instead." >&2
   exit 2
 fi
 

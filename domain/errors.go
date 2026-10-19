@@ -18,4 +18,5 @@ var (
 var (
 	ErrUserNotFound = fmt.Errorf("user %w", ErrNotFound)
 	ErrEmailTaken   = fmt.Errorf("%w: email already taken", ErrConflict)
+	ErrNoChanges    = fmt.Errorf("%w: at least one of email or password is required", ErrValidation)
 )

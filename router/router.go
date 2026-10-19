@@ -5,6 +5,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 
+	"connection_manager/dto"
 	"connection_manager/handler"
 )
 
@@ -32,5 +33,5 @@ func New(h Handlers) *fiber.App {
 }
 
 func healthz(c fiber.Ctx) error {
-	return c.JSON(fiber.Map{"status": "ok"})
+	return c.JSON(dto.HealthResponse{Status: dto.HealthResponseStatusOk})
 }

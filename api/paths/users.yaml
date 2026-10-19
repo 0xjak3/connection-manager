@@ -1,0 +1,55 @@
+post:
+  operationId: createUser
+  tags: [users]
+  summary: Sign up a user
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../schemas/user.yaml#/CreateUserRequest
+  responses:
+    "201":
+      description: User created.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/user.yaml#/UserResponse
+    "400":
+      description: |
+        `invalid_request`: malformed JSON, missing/unsupported Content-Type, or field
+        validation failed (missing email/password, bad email format, password length).
+        `validation_error`: the password is longer than 72 bytes.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "409":
+      description: "`conflict`: the email is already taken (`conflict: email already taken`)."
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "500":
+      description: "`internal_error`: unexpected failure."
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+get:
+  operationId: listUsers
+  tags: [users]
+  summary: List users
+  responses:
+    "200":
+      description: All users.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/user.yaml#/UserListResponse
+    "500":
+      description: "`internal_error`: unexpected failure."
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse

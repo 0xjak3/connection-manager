@@ -1,0 +1,9 @@
+openapi: 3.0.3
+info:
+  title: unlisted schema key fixture
+  version: "1"
+paths: {}
+components:
+  schemas:
+    # Orphan in schemas/thing.yaml is not listed and not referenced.
+    Thing: { $ref: ./schemas/thing.yaml#/Thing }

@@ -23,31 +23,37 @@ func ErrorHandler(c fiber.Ctx, err error) error {
 	return c.Status(status).JSON(dto.ErrorResponse{Error: dto.ErrorBody{Code: code, Message: msg}})
 }
 
-func classify(err error) (status int, code, msg string) {
+func classify(err error) (status int, code dto.ErrorBodyCode, msg string) {
 	var verrs validator.ValidationErrors
 	var bindErr *fiber.BindError
 	var fErr *fiber.Error
 	switch {
 	case errors.As(err, &verrs):
-		return fiber.StatusBadRequest, "invalid_request", validationMessage(verrs)
+		return fiber.StatusBadRequest, dto.ErrorBodyCodeInvalidRequest, validationMessage(verrs)
 	case errors.As(err, &bindErr):
-		return fiber.StatusBadRequest, "invalid_request", "malformed request body"
-	case errors.Is(err, fiber.ErrUnprocessableEntity): // Bind: missing/unsupported Content-Type
-		return fiber.StatusBadRequest, "invalid_request", "unsupported or missing Content-Type"
+		return fiber.StatusBadRequest, dto.ErrorBodyCodeInvalidRequest, "malformed request body"
+	// Bind returns the fiber.ErrUnprocessableEntity sentinel itself for a
+	// missing/unsupported Content-Type, and errors.Is matches it by pointer.
+	// Handlers that need a 422 must use fiber.NewError(fiber.StatusUnprocessableEntity, ...)
+	// (a new *fiber.Error, mapped to http_error below) and never return the
+	// fiber.ErrUnprocessableEntity sentinel themselves, or it is reported as
+	// a 400 invalid_request.
+	case errors.Is(err, fiber.ErrUnprocessableEntity):
+		return fiber.StatusBadRequest, dto.ErrorBodyCodeInvalidRequest, "unsupported or missing Content-Type"
 	case errors.As(err, &fErr):
-		return fErr.Code, "http_error", fErr.Message
+		return fErr.Code, dto.ErrorBodyCodeHTTPError, fErr.Message
 	case errors.Is(err, domain.ErrValidation):
-		return fiber.StatusBadRequest, "validation_error", err.Error()
+		return fiber.StatusBadRequest, dto.ErrorBodyCodeValidationError, err.Error()
 	case errors.Is(err, domain.ErrNotFound):
-		return fiber.StatusNotFound, "not_found", err.Error()
+		return fiber.StatusNotFound, dto.ErrorBodyCodeNotFound, err.Error()
 	case errors.Is(err, domain.ErrConflict):
-		return fiber.StatusConflict, "conflict", err.Error()
+		return fiber.StatusConflict, dto.ErrorBodyCodeConflict, err.Error()
 	case errors.Is(err, domain.ErrInvalidState):
-		return fiber.StatusConflict, "invalid_state", err.Error()
+		return fiber.StatusConflict, dto.ErrorBodyCodeInvalidState, err.Error()
 	case errors.Is(err, domain.ErrForbidden):
-		return fiber.StatusForbidden, "forbidden", err.Error()
+		return fiber.StatusForbidden, dto.ErrorBodyCodeForbidden, err.Error()
 	default:
-		return fiber.StatusInternalServerError, "internal_error", "internal server error"
+		return fiber.StatusInternalServerError, dto.ErrorBodyCodeInternalError, "internal server error"
 	}
 }
 

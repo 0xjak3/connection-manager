@@ -1,0 +1,9 @@
+openapi: 3.0.3
+info:
+  title: missing ref fixture
+  version: "1"
+paths: {}
+components:
+  schemas:
+    # Other is referenced by Thing but not listed here.
+    Thing: { $ref: ./schemas/thing.yaml#/Thing }

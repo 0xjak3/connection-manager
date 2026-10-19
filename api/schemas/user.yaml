@@ -1,0 +1,82 @@
+CreateUserRequest:
+  type: object
+  required: [email, password]
+  properties:
+    email:
+      type: string
+      description: |
+        A valid email address once surrounding whitespace is removed. Stored trimmed
+        and lowercased. Unique (case-insensitive).
+      minLength: 1
+      x-oapi-codegen-extra-tags:
+        validate: "required,trimmed_email"
+    password:
+      type: string
+      description: 8 to 72 characters, and at most 72 bytes in UTF-8. Never returned.
+      minLength: 8
+      maxLength: 72
+      x-oapi-codegen-extra-tags:
+        validate: "required,min=8,max=72"
+
+UpdateUserRequest:
+  type: object
+  description: |
+    Partial update. At least one of `email` and `password` is required.
+    A field sent as `null` counts as absent, so it does not satisfy
+    "at least one field" (`{"email": null}` is rejected like `{}`).
+  minProperties: 1
+  properties:
+    email:
+      type: string
+      description: |
+        A valid email address once surrounding whitespace is removed. Stored trimmed
+        and lowercased. Unique (case-insensitive).
+      x-oapi-codegen-extra-tags:
+        validate: "required_without=Password,omitnil,trimmed_email"
+    password:
+      type: string
+      description: 8 to 72 characters, and at most 72 bytes in UTF-8. Never returned.
+      minLength: 8
+      maxLength: 72
+      x-oapi-codegen-extra-tags:
+        validate: "required_without=Email,omitnil,min=8,max=72"
+
+User:
+  type: object
+  additionalProperties: false
+  required: [id, email, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    email:
+      type: string
+      description: Trimmed, lowercased email.
+    created_at:
+      type: string
+      format: date-time
+      description: RFC 3339, UTC. Set once when the user is created and never changes.
+    updated_at:
+      type: string
+      format: date-time
+      description: >-
+        RFC 3339, UTC. Equal to created_at when the user is created. Moves strictly
+        forward on every successful update. A rejected update (400, 404, 409) leaves it unchanged.
+
+UserResponse:
+  type: object
+  additionalProperties: false
+  required: [data]
+  properties:
+    data:
+      $ref: "#/User"
+
+UserListResponse:
+  type: object
+  additionalProperties: false
+  required: [data]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: "#/User"

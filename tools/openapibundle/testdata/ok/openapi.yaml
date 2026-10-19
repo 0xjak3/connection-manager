@@ -1,0 +1,14 @@
+openapi: 3.0.3
+info:
+  title: ok fixture
+  version: "1"
+paths:
+  /things:
+    $ref: ./paths/things.yaml
+components:
+  schemas:
+    # Keys deliberately differ from the schema names in the files: the
+    # bundle must use the root keys.
+    Item: { $ref: ./schemas/thing.yaml#/Thing }
+    ItemResponse: { $ref: ./schemas/thing.yaml#/ThingResponse }
+    Problem: { $ref: ./schemas/common.yaml#/Problem }

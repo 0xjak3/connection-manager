@@ -1,0 +1,9 @@
+openapi: 3.0.3
+info:
+  title: duplicate target fixture
+  version: "1"
+paths: {}
+components:
+  schemas:
+    A: { $ref: ./schemas/thing.yaml#/Thing }
+    B: { $ref: ./schemas/thing.yaml#/Thing }

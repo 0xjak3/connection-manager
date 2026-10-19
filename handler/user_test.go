@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"connection_manager/domain"
+	"connection_manager/dto"
 	"connection_manager/usecase"
 )
 
@@ -89,7 +90,7 @@ func doRequest(t *testing.T, app *fiber.App, method, path, body string) (int, st
 
 func errorCode(t *testing.T, body string) string {
 	t.Helper()
-	return decodeError(t, strings.NewReader(body)).Error.Code
+	return string(decodeError(t, strings.NewReader(body)).Error.Code)
 }
 
 func TestUserHandler_Create(t *testing.T) {
@@ -145,7 +146,7 @@ func TestUserHandler_Create_WithoutContentType(t *testing.T) {
 	resp, err := newUserTestApp(uc).Test(req)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	require.Equal(t, "invalid_request", decodeError(t, resp.Body).Error.Code)
+	require.Equal(t, dto.ErrorBodyCodeInvalidRequest, decodeError(t, resp.Body).Error.Code)
 }
 
 func TestUserHandler_List(t *testing.T) {
@@ -285,9 +286,9 @@ func TestUserHandler_Delete(t *testing.T) {
 
 func ptr(s string) *string { return &s }
 
-// Guard against accidentally adding a password field to the response dto.
-func TestUserResponse_HasNoPasswordField(t *testing.T) {
-	b, err := json.Marshal(toUserResponse(testUser))
+// Guard against a password field leaking into the response dto.
+func TestToUser_HasNoPasswordField(t *testing.T) {
+	b, err := json.Marshal(toUser(testUser))
 	require.NoError(t, err)
 	require.JSONEq(t, testUserJSON, string(b))
 }

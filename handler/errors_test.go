@@ -39,7 +39,7 @@ func TestErrorHandler(t *testing.T) {
 		name       string
 		err        error
 		wantStatus int
-		wantCode   string
+		wantCode   dto.ErrorBodyCode
 		wantMsg    string
 	}{
 		{"fiber error", fiber.NewError(http.StatusBadRequest, "invalid id"), 400, "http_error", "invalid id"},
@@ -94,7 +94,7 @@ func TestErrorHandler_BindAndValidation(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 			body := decodeError(t, resp.Body)
-			require.Equal(t, "invalid_request", body.Error.Code)
+			require.Equal(t, dto.ErrorBodyCodeInvalidRequest, body.Error.Code)
 			require.Equal(t, tc.wantMsg, body.Error.Message)
 		})
 	}

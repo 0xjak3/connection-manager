@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
 
@@ -59,13 +58,12 @@ func (u *UserUsecase) List(ctx context.Context) ([]domain.User, error) {
 }
 
 func (u *UserUsecase) Update(ctx context.Context, in UpdateUserInput) (domain.User, error) {
-	if in.Email == nil && in.Password == nil {
-		return domain.User{}, fmt.Errorf("%w: at least one of email or password is required", domain.ErrValidation)
+	// Cheap checks before loading and hashing; the domain re-checks on Update.
+	if (domain.UserChanges{Email: in.Email, PasswordHash: in.Password}).IsEmpty() {
+		return domain.User{}, domain.ErrNoChanges
 	}
-	var email string
 	if in.Email != nil {
-		var err error
-		if email, err = domain.ParseEmail(*in.Email); err != nil { // cheap check before loading and hashing
+		if _, err := domain.ParseEmail(*in.Email); err != nil {
 			return domain.User{}, err
 		}
 	}
@@ -73,20 +71,16 @@ func (u *UserUsecase) Update(ctx context.Context, in UpdateUserInput) (domain.Us
 	if err != nil {
 		return domain.User{}, err
 	}
-	now := u.clock.Now()
-	if in.Email != nil {
-		if err := user.ChangeEmail(email, now); err != nil {
-			return domain.User{}, err
-		}
-	}
+	changes := domain.UserChanges{Email: in.Email}
 	if in.Password != nil {
 		hash, err := u.hasher.Hash(ctx, *in.Password)
 		if err != nil {
 			return domain.User{}, err
 		}
-		if err := user.ChangePassword(hash, now); err != nil {
-			return domain.User{}, err
-		}
+		changes.PasswordHash = &hash
+	}
+	if err := user.Update(changes, u.clock.Now()); err != nil {
+		return domain.User{}, err
 	}
 	if err := u.repo.Update(ctx, user); err != nil {
 		return domain.User{}, err

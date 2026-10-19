@@ -34,6 +34,7 @@ api/
 - Root `paths:` entries are `$ref: ./paths/<file>.yaml`. Root `components.schemas:` lists **every** schema by its name: `User: {$ref: ./schemas/user.yaml#/User}`.
 - Path files reference schemas by file + name: `$ref: ../schemas/user.yaml#/UserResponse`. Schema files reference each other the same way (`./common.yaml#/ErrorBody`, or `#/User` within the same file).
 - Adding a feature = new `paths/*.yaml` + `schemas/<resource>.yaml`, plus one line per path and per schema in the root.
+- Path parameters (e.g. `id`) are written inline in the path file. The bundler accepts external refs to **schemas only**; refs to parameters, responses, request bodies or examples in other files fail the bundle. Every top-level key in `schemas/*.yaml` must be listed in the root, or the bundle fails.
 
 ## Bundling (`tools/openapibundle`)
 
@@ -71,7 +72,7 @@ compatibility:
 
 - oapi-codegen is pinned in `go.mod` as a Go tool (`go get -tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0`).
 - `make generate` runs, in order: `go run ./tools/openapibundle` → `go tool oapi-codegen -config oapi-codegen.yaml api/openapi.gen.yaml` → `sqlc generate`.
-- `make check` includes a generated-code freshness check: it runs `make generate` and fails if `git diff` shows changes in `api/openapi.gen.yaml`, `dto/` or `repository/sqlcgen/`.
+- `make check` includes `make check-generated`: it regenerates the bundle and dto into `tmp/_gen/` (gitignored; the `_` prefix keeps it out of `./...`), diffs them against the **working-tree** files, and runs `sqlc diff`. It writes no project files. Locally it proves the working tree is consistent; only a clean checkout (CI) proves the committed files are.
 - Only models are generated. Server/router code is ours (Fiber v3 handlers + `router/router.go`).
 - `dto/` contains only `dto.gen.go` plus, if needed, small hand-written files for things the spec can't express. Hand-written request/response structs that duplicate a schema are not allowed.
 - The post-edit hook blocks hand edits to `api/openapi.gen.yaml` and `dto/*.gen.go`.

@@ -1,0 +1,13 @@
+Thing:
+  type: object
+  properties:
+    first:
+      $ref: "#/Other"
+    second:
+      $ref: "#/Other"
+
+Other:
+  type: object
+  properties:
+    name:
+      type: string

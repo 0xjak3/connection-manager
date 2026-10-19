@@ -1,0 +1,15 @@
+get:
+  operationId: getThing
+  responses:
+    "200":
+      description: The thing.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/thing.yaml#/ThingResponse
+    "500":
+      description: Failure.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/Problem
