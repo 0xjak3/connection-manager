@@ -20,7 +20,7 @@ type User struct {
 }
 
 func NewUser(email, passwordHash string, now time.Time) (User, error) {
-	email, err := normalizeEmail(email)
+	email, err := ParseEmail(email)
 	if err != nil {
 		return User{}, err
 	}
@@ -36,28 +36,63 @@ func NewUser(email, passwordHash string, now time.Time) (User, error) {
 	}, nil
 }
 
-func (u *User) ChangeEmail(email string, now time.Time) error {
-	email, err := normalizeEmail(email)
-	if err != nil {
-		return err
+// UserChanges is one update to a user. Nil fields are left as they are.
+type UserChanges struct {
+	Email        *string
+	PasswordHash *string
+}
+
+// IsEmpty reports whether the changes would modify nothing.
+func (c UserChanges) IsEmpty() bool { return c.Email == nil && c.PasswordHash == nil }
+
+// Update validates every change first, then applies them all and records a
+// single UpdatedAt. On error the user is left unchanged.
+func (u *User) Update(c UserChanges, now time.Time) error {
+	if c.IsEmpty() {
+		return ErrNoChanges
+	}
+	email := u.Email
+	if c.Email != nil {
+		var err error
+		if email, err = ParseEmail(*c.Email); err != nil {
+			return err
+		}
+	}
+	hash := u.PasswordHash
+	if c.PasswordHash != nil {
+		if err := validatePasswordHash(*c.PasswordHash); err != nil {
+			return err
+		}
+		hash = *c.PasswordHash
 	}
 	u.Email = email
-	u.UpdatedAt = now
+	u.PasswordHash = hash
+	u.touch(now)
 	return nil
+}
+
+func (u *User) ChangeEmail(email string, now time.Time) error {
+	return u.Update(UserChanges{Email: &email}, now)
 }
 
 func (u *User) ChangePassword(passwordHash string, now time.Time) error {
-	if err := validatePasswordHash(passwordHash); err != nil {
-		return err
-	}
-	u.PasswordHash = passwordHash
-	u.UpdatedAt = now
-	return nil
+	return u.Update(UserChanges{PasswordHash: &passwordHash}, now)
 }
 
-// normalizeEmail trims and lowercases the email and checks it is a bare
+// touch records a successful change. UpdatedAt always moves strictly forward,
+// even if now is not after it (same microsecond, or the clock stepped back).
+func (u *User) touch(now time.Time) {
+	now = now.Truncate(time.Microsecond) // Postgres timestamptz precision
+	if !now.After(u.UpdatedAt) {
+		now = u.UpdatedAt.Add(time.Microsecond)
+	}
+	u.UpdatedAt = now
+}
+
+// ParseEmail trims and lowercases the email and checks it is a bare
 // addr-spec ("local@domain"), rejecting display names and address lists.
-func normalizeEmail(email string) (string, error) {
+// It is pure, so a usecase can reject bad input before expensive work.
+func ParseEmail(email string) (string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if email == "" {
 		return "", fmt.Errorf("%w: email is required", ErrValidation)

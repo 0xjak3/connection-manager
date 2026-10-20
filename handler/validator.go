@@ -20,6 +20,14 @@ func NewStructValidator() *StructValidator {
 		}
 		return name
 	})
+	// trimmed_email: the value is an email once surrounding whitespace is
+	// removed. The value itself is passed on unchanged; the domain normalizes it.
+	err := v.RegisterValidation("trimmed_email", func(fl validator.FieldLevel) bool {
+		return v.Var(strings.TrimSpace(fl.Field().String()), "email") == nil
+	})
+	if err != nil {
+		panic(err) // only fails for an invalid tag name: a programming error
+	}
 	return &StructValidator{v: v}
 }
 

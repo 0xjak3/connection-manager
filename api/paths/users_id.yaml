@@ -1,0 +1,107 @@
+parameters:
+  - name: id
+    in: path
+    required: true
+    description: User id (UUID v7).
+    schema:
+      type: string
+      format: uuid
+get:
+  operationId: getUser
+  tags: [users]
+  summary: Fetch a user
+  responses:
+    "200":
+      description: The user.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/user.yaml#/UserResponse
+    "400":
+      description: "`http_error`: the id is not a UUID (`invalid id`)."
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "404":
+      description: "`not_found`: no user with this id (`user not found`)."
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "500":
+      description: "`internal_error`: unexpected failure."
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+patch:
+  operationId: updateUser
+  tags: [users]
+  summary: Change a user's email and/or password
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../schemas/user.yaml#/UpdateUserRequest
+  responses:
+    "200":
+      description: The updated user.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/user.yaml#/UserResponse
+    "400":
+      description: |
+        `http_error`: the id is not a UUID (`invalid id`).
+        `invalid_request`: malformed JSON, missing/unsupported Content-Type, neither
+        field present, bad email format, or password length.
+        `validation_error`: the password is longer than 72 bytes.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "404":
+      description: "`not_found`: no user with this id (`user not found`)."
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "409":
+      description: "`conflict`: the email is taken by another user (`conflict: email already taken`)."
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "500":
+      description: "`internal_error`: unexpected failure."
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+delete:
+  operationId: deleteUser
+  tags: [users]
+  summary: Delete a user
+  responses:
+    "204":
+      description: User deleted. No body.
+    "400":
+      description: "`http_error`: the id is not a UUID (`invalid id`)."
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "404":
+      description: "`not_found`: no user with this id (`user not found`)."
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "500":
+      description: "`internal_error`: unexpected failure."
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse

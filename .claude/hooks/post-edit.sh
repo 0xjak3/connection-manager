@@ -13,13 +13,24 @@ if command -v jq >/dev/null 2>&1; then
 else
   file="$(printf '%s' "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')"
 fi
-[[ -n "$file" && "$file" == *.go ]] || exit 0
+[[ -n "$file" ]] || exit 0
 case "$file" in /*) ;; *) file="$PWD/$file" ;; esac
 case "$file" in "$ROOT"/*) ;; *) exit 0 ;; esac
 rel="${file#"$ROOT"/}"
 
+if [[ "$rel" == api/openapi.gen.yaml ]]; then
+  echo "api/openapi.gen.yaml is a generated bundle. Edit api/openapi.yaml, api/paths/*.yaml or api/schemas/*.yaml and run 'make generate' instead." >&2
+  exit 2
+fi
+[[ "$file" == *.go ]] || exit 0
+
 if [[ "$rel" == repository/sqlcgen/* ]]; then
   echo "repository/sqlcgen/ is generated. Edit db/queries/*.sql or db/migrations/*.sql and run 'sqlc generate' instead." >&2
+  exit 2
+fi
+
+if [[ "$rel" == dto/*.gen.go ]]; then
+  echo "dto/*.gen.go is generated from the spec. Edit api/openapi.yaml, api/paths/*.yaml or api/schemas/*.yaml and run 'make generate' instead." >&2
   exit 2
 fi
 

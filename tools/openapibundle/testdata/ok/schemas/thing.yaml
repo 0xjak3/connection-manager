@@ -1,0 +1,13 @@
+Thing:
+  type: object
+  properties:
+    name:
+      type: string
+
+ThingResponse:
+  type: object
+  properties:
+    data:
+      $ref: "#/Thing"
+    error:
+      $ref: "./common.yaml#/Problem"

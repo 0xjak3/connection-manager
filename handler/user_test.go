@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"connection_manager/domain"
+	"connection_manager/dto"
 	"connection_manager/usecase"
 )
 
@@ -89,7 +90,7 @@ func doRequest(t *testing.T, app *fiber.App, method, path, body string) (int, st
 
 func errorCode(t *testing.T, body string) string {
 	t.Helper()
-	return decodeError(t, strings.NewReader(body)).Error.Code
+	return string(decodeError(t, strings.NewReader(body)).Error.Code)
 }
 
 func TestUserHandler_Create(t *testing.T) {
@@ -108,17 +109,22 @@ func TestUserHandler_Create(t *testing.T) {
 		body       string
 		wantStatus int
 		wantCode   string
+		wantEmail  string // passed to the usecase as sent; the domain normalizes it
 	}{
-		{"success", ok, `{"email":"alice@example.com","password":"secret123"}`, 201, ""},
-		{"missing email", ok, `{"password":"secret123"}`, 400, "invalid_request"},
-		{"bad email", ok, `{"email":"nope","password":"secret123"}`, 400, "invalid_request"},
-		{"short password", ok, `{"email":"alice@example.com","password":"short"}`, 400, "invalid_request"},
-		{"long password", ok, `{"email":"alice@example.com","password":"` + strings.Repeat("a", 73) + `"}`, 400, "invalid_request"},
-		{"malformed json", ok, `{"email":`, 400, "invalid_request"},
-		{"email taken", taken, `{"email":"alice@example.com","password":"secret123"}`, 409, "conflict"},
+		{"success", ok, `{"email":"alice@example.com","password":"secret123"}`, 201, "", "alice@example.com"},
+		{"padded email", ok, `{"email":"  Alice@Example.com ","password":"secret123"}`, 201, "", "  Alice@Example.com "},
+		{"missing email", ok, `{"password":"secret123"}`, 400, "invalid_request", ""},
+		{"blank email", ok, `{"email":"   ","password":"secret123"}`, 400, "invalid_request", ""},
+		{"bad email", ok, `{"email":"nope","password":"secret123"}`, 400, "invalid_request", ""},
+		{"padded bad email", ok, `{"email":" nope ","password":"secret123"}`, 400, "invalid_request", ""},
+		{"short password", ok, `{"email":"alice@example.com","password":"short"}`, 400, "invalid_request", ""},
+		{"long password", ok, `{"email":"alice@example.com","password":"` + strings.Repeat("a", 73) + `"}`, 400, "invalid_request", ""},
+		{"malformed json", ok, `{"email":`, 400, "invalid_request", ""},
+		{"email taken", taken, `{"email":"alice@example.com","password":"secret123"}`, 409, "conflict", ""},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			got = usecase.CreateUserInput{}
 			status, body := doRequest(t, newUserTestApp(tc.uc), http.MethodPost, "/users", tc.body)
 			require.Equal(t, tc.wantStatus, status, body)
 			if tc.wantCode != "" {
@@ -126,9 +132,21 @@ func TestUserHandler_Create(t *testing.T) {
 				return
 			}
 			require.JSONEq(t, `{"data":`+testUserJSON+`}`, body)
-			require.Equal(t, usecase.CreateUserInput{Email: "alice@example.com", Password: "secret123"}, got)
+			require.Equal(t, usecase.CreateUserInput{Email: tc.wantEmail, Password: "secret123"}, got)
 		})
 	}
+}
+
+func TestUserHandler_Create_WithoutContentType(t *testing.T) {
+	uc := &fakeUserUsecase{create: func(context.Context, usecase.CreateUserInput) (domain.User, error) {
+		t.Fatal("usecase must not be called")
+		return domain.User{}, nil
+	}}
+	req := httptest.NewRequest(http.MethodPost, "/users", strings.NewReader(`{"email":"alice@example.com","password":"secret123"}`))
+	resp, err := newUserTestApp(uc).Test(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	require.Equal(t, dto.ErrorBodyCodeInvalidRequest, decodeError(t, resp.Body).Error.Code)
 }
 
 func TestUserHandler_List(t *testing.T) {
@@ -198,6 +216,8 @@ func TestUserHandler_Update(t *testing.T) {
 		wantPassword *string
 	}{
 		{name: "email only", path: path, body: `{"email":"bob@example.com"}`, wantStatus: 200, wantEmail: ptr("bob@example.com")},
+		{name: "padded email", path: path, body: `{"email":" BOB@example.com  "}`, wantStatus: 200, wantEmail: ptr(" BOB@example.com  ")},
+		{name: "blank email", path: path, body: `{"email":"  "}`, wantStatus: 400, wantCode: "invalid_request"},
 		{name: "password only", path: path, body: `{"password":"new-secret"}`, wantStatus: 200, wantPassword: ptr("new-secret")},
 		{name: "both", path: path, body: `{"email":"bob@example.com","password":"new-secret"}`, wantStatus: 200, wantEmail: ptr("bob@example.com"), wantPassword: ptr("new-secret")},
 		{name: "neither", path: path, body: `{}`, wantStatus: 400, wantCode: "invalid_request"},
@@ -221,6 +241,17 @@ func TestUserHandler_Update(t *testing.T) {
 			require.Equal(t, usecase.UpdateUserInput{ID: fixedID, Email: tc.wantEmail, Password: tc.wantPassword}, got)
 		})
 	}
+}
+
+func TestUserHandler_Update_EmptyMessageUsesJSONNames(t *testing.T) {
+	uc := &fakeUserUsecase{update: func(context.Context, usecase.UpdateUserInput) (domain.User, error) {
+		t.Fatal("usecase must not be called")
+		return domain.User{}, nil
+	}}
+	status, body := doRequest(t, newUserTestApp(uc), http.MethodPatch, "/users/"+fixedID.String(), `{}`)
+	require.Equal(t, http.StatusBadRequest, status)
+	require.Equal(t, "email failed required_without=password; password failed required_without=email",
+		decodeError(t, strings.NewReader(body)).Error.Message)
 }
 
 func TestUserHandler_Delete(t *testing.T) {
@@ -255,9 +286,9 @@ func TestUserHandler_Delete(t *testing.T) {
 
 func ptr(s string) *string { return &s }
 
-// Guard against accidentally adding a password field to the response dto.
-func TestUserResponse_HasNoPasswordField(t *testing.T) {
-	b, err := json.Marshal(toUserResponse(testUser))
+// Guard against a password field leaking into the response dto.
+func TestToUser_HasNoPasswordField(t *testing.T) {
+	b, err := json.Marshal(toUser(testUser))
 	require.NoError(t, err)
 	require.JSONEq(t, testUserJSON, string(b))
 }

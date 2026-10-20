@@ -8,28 +8,15 @@ paths:
 
 # Handler, dto and router rules (Fiber v3)
 
-## dto (`dto/<aggregate>.go`)
+## dto (`dto/dto.gen.go`, generated from the spec in `api/`)
 
-- `XxxRequest` structs have `json` + `validate` tags. `XxxResponse` structs have `json` tags. JSON keys are snake_case. Times are `time.Time` (serialized as RFC 3339).
-- Plain data only: no methods with logic, no project imports.
-- PATCH requests use pointer fields (`*string`) with `omitnil`. Cross-field rules are expressed with validator tags (`required_without=Password`). If a rule can't be expressed in tags, register a custom validation in `handler/validator.go`. Never put imperative checks in dto.
+- dto structs are **generated** by oapi-codegen from the spec in `api/` (`.claude/rules/openapi.md`). To change a request or response, change the spec and run `make generate`. Never edit `dto/dto.gen.go`; the hook blocks it.
+- Envelopes are concrete per resource (`UserResponse{Data User}`, `UserListResponse{Data []User}`) plus `ErrorResponse{Error ErrorBody}`. There is no generic envelope.
+- Validate tags come from `x-oapi-codegen-extra-tags` in the spec and must match the schema constraints.
+- PATCH requests are pointer fields (`*string`, `omitempty`) with `omitnil` in the validate tag. Cross-field rules use validator tags (`required_without=Password`). If a rule can't be expressed in tags, register a custom validation in `handler/validator.go`.
+- A value that needs trimming before format validation uses a custom tag registered in `handler/validator.go` (e.g. `trimmed_email`). The dto value is passed on unchanged and the domain still normalizes it.
+- JSON keys are the snake_case of the Go field name, always (the generator uses `ToCamelCaseWithInitialisms`, so `id` → `ID`, `created_at` → `CreatedAt`). `validationMessage` relies on this to translate field names in tag params (`required_without=Password` → `password`).
 - `max`/`min` count characters (runes). Byte limits (bcrypt's 72 bytes) are enforced in the service/domain and come back as `domain.ErrValidation`.
-- Shared envelopes live in `dto/response.go`:
-
-```go
-type DataResponse[T any] struct {
-	Data T `json:"data"`
-}
-
-type ErrorResponse struct {
-	Error ErrorBody `json:"error"`
-}
-
-type ErrorBody struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
-```
 
 ## handler (`handler/<aggregate>.go`)
 
@@ -53,13 +40,13 @@ func (h *ConnectionHandler) Create(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.Status(fiber.StatusCreated).JSON(dto.DataResponse[dto.ConnectionResponse]{Data: toConnectionResponse(conn)})
+	return c.Status(fiber.StatusCreated).JSON(dto.ConnectionResponse{Data: toConnection(conn)})
 }
 ```
 
 - Steps: bind + validate the dto → map it to a usecase input → call the usecase → map the returned domain to a dto → respond. Nothing else.
 - Fiber v3 signatures: handlers are `func(c fiber.Ctx) error` (`Ctx` is an interface, not a pointer). Pass `c.Context()` (a `context.Context`) to the usecase.
-- Mapping domain → dto uses private functions in `handler/<aggregate>_mapper.go`, e.g. `toConnectionResponse(domain.Connection) dto.ConnectionResponse`.
+- Mapping domain → dto uses private functions in `handler/<aggregate>_mapper.go`, e.g. `toConnection(domain.Connection) dto.Connection`.
 - Parse path params (UUIDs etc.) in the handler. If one is invalid, return `fiber.NewError(fiber.StatusBadRequest, "invalid id")`.
 - Handlers only pick the success status. On failure they `return err` and let the central error handler map it.
 - Never call repository/service, never hold business rules, never return domain structs as JSON directly.

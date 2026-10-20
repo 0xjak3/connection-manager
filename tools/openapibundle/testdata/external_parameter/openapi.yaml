@@ -1,0 +1,10 @@
+openapi: 3.0.3
+info:
+  title: external parameter fixture
+  version: "1"
+paths:
+  /things/{id}:
+    $ref: ./paths/things_id.yaml
+components:
+  schemas:
+    Thing: { $ref: ./schemas/thing.yaml#/Thing }

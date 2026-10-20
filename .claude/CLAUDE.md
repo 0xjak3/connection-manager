@@ -18,7 +18,7 @@ Go HTTP API. Purpose and feature set are **not defined yet**. Do not invent enti
 cmd/api/main.go      composition root: config → pgxpool → repositories → services → usecases → handlers → router → listen
 router/              Fiber app setup (error handler, middleware) + route table
 handler/             HTTP: bind/validate dto → call usecase → map domain → dto response
-dto/                 request/response structs (json + validate tags). No logic, no project imports
+dto/                 request/response structs GENERATED from the spec (dto.gen.go), never edit by hand
 usecase/             application logic: orchestrates domain + repositories + services. Declares its ports (interfaces)
 domain/              entities, value objects, domain errors, business rules as methods
 service/             adapters to 3rd-party / external capabilities (HTTP APIs, email, clock, crypto, …)
@@ -29,6 +29,10 @@ db/queries/          sqlc query files, one per table/aggregate
 util/                generic helpers with no business meaning (config, logger)
 test/                end-to-end API tests (build tag `e2e`)
 sqlc.yaml
+api/                 API contract (spec-first), split per resource: openapi.yaml (root), paths/, schemas/
+api/openapi.gen.yaml GENERATED bundle: source of dto and of e2e contract checks, never edit
+tools/openapibundle/ bundles api/ into api/openapi.gen.yaml
+oapi-codegen.yaml    dto generator config
 ```
 
 ## Request flow
@@ -48,9 +52,9 @@ HTTP ◀── handler ◀──domain → dto── usecase (returns domain)
 4. Interfaces are declared by their consumer (`usecase/ports.go`, small interfaces in handler), and implemented by repository/service.
 5. Errors: repository/service translate infra errors into domain errors; the router's error handler is the only place that maps domain errors to HTTP status.
 6. `context.Context` is the first parameter of every usecase, repository and service method.
-7. **TDD, outside in:** write a failing e2e scenario first, implement, then make it pass (`.claude/rules/tdd.md`). E2E tests use the API like a real user, against a throwaway container (`.claude/rules/e2e.md`).
+7. **Spec-first, TDD outside in:** update the spec in `api/` first (`.claude/rules/openapi.md`), write a failing e2e scenario, implement, then make it pass (`.claude/rules/tdd.md`). E2E tests use the API like a real user, against a throwaway container (`.claude/rules/e2e.md`).
 
-Per-layer details are in `.claude/rules/`: `tdd.md`, `e2e.md`, `architecture.md`, `domain.md`, `repository.md`, `usecase-service.md`, `handler-dto.md`, `testing.md`.
+Per-layer details are in `.claude/rules/`: `tdd.md`, `openapi.md`, `e2e.md`, `architecture.md`, `domain.md`, `repository.md`, `usecase-service.md`, `handler-dto.md`, `testing.md`.
 To add a feature end-to-end (and bootstrap the project on first use), follow `.claude/skills/new-feature/SKILL.md`.
 
 ## Commands (run from the project root)
@@ -59,14 +63,15 @@ To add a feature end-to-end (and bootstrap the project on first use), follow `.c
 make db-up              # docker compose (project `connection_manager`): dev Postgres 17 on 127.0.0.1:5440, test Postgres on 127.0.0.1:5441
 make migrate-up         # apply db/migrations to the dev DB (migrate CLI if installed, else the migrate/migrate image)
 make migrate-down       # roll back the last migration on the dev DB
-make generate           # sqlc generate (after changing db/queries or db/migrations)
+make generate           # bundle api/ → api/openapi.gen.yaml, oapi-codegen → dto/dto.gen.go, sqlc generate (after changing api/, db/queries or db/migrations)
+make check-generated    # regenerate into tmp/_gen and diff against api/openapi.gen.yaml, dto/dto.gen.go; sqlc diff (writes no project files)
 make test               # go test ./...  (unit tests, no DB needed)
 make test-integration   # starts the test DB, then go test -tags=integration ./repository/...
 make run                # go run ./cmd/api against the dev DB (HTTP_ADDR defaults to :8080)
 make db-down            # docker compose down (dev data volume is kept; test DB is tmpfs)
 make lint-layers        # layer import check over every .go file
 make test-e2e           # e2e: throwaway Postgres container + real binary, HTTP only (needs Docker)
-make check              # lint-layers + vet + build + unit tests + sqlc vet (Definition of Done, no DB)
+make check              # lint-layers + check-generated + vet + build + unit tests + sqlc vet (Definition of Done, no DB)
 
 go build ./...
 go vet ./...
@@ -79,7 +84,7 @@ Env: `DATABASE_URL` (required by the API; Makefile default `postgres://cm:cm@loc
 ## Definition of Done
 
 - [ ] E2E scenarios for the change exist, were seen failing first (red), and `make test-e2e` now passes (green)
-- [ ] `make check` passes (layer check, vet, build, unit tests, sqlc vet; gofmt runs automatically on every edit)
+- [ ] `make check` passes (layer check, generated-code freshness, vet, build, unit tests, sqlc vet; gofmt runs automatically on every edit)
 - [ ] If repository changed: `make test-integration` passes
 - [ ] If SQL changed: `sqlc generate` was run and the generated code is up to date
 - [ ] Every new migration has both up and down files

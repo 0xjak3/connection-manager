@@ -1,0 +1,11 @@
+get:
+  operationId: healthz
+  tags: [health]
+  summary: Liveness check
+  responses:
+    "200":
+      description: The API is up.
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/HealthResponse

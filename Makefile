@@ -2,10 +2,22 @@ DATABASE_URL      ?= postgres://cm:cm@localhost:5440/connection_manager?sslmode=
 TEST_DATABASE_URL ?= postgres://cm:cm@localhost:5441/connection_manager_test?sslmode=disable
 MIGRATIONS        := db/migrations
 
-.PHONY: generate db-up db-down migrate-up migrate-down test test-integration run lint-layers check test-e2e
+.PHONY: generate check-generated db-up db-down migrate-up migrate-down test test-integration run lint-layers check test-e2e
 
-generate: ## regenerate sqlc code
+generate: ## bundle api/ → api/openapi.gen.yaml, generate dto/dto.gen.go, then sqlc code
+	go run ./tools/openapibundle
+	go tool oapi-codegen -config oapi-codegen.yaml api/openapi.gen.yaml
 	sqlc generate
+
+# Regenerates into tmp/_gen (ignored by ./... because of the _ prefix) and diffs against the working tree; touches no project files.
+check-generated: ## fail if generated code is stale
+	@rm -rf tmp/_gen && mkdir -p tmp/_gen
+	@go run ./tools/openapibundle -out tmp/_gen/openapi.gen.yaml
+	@sed 's#^output: .*#output: tmp/_gen/dto.gen.go#' oapi-codegen.yaml > tmp/_gen/oapi-codegen.yaml
+	@go tool oapi-codegen -config tmp/_gen/oapi-codegen.yaml tmp/_gen/openapi.gen.yaml
+	@diff -u api/openapi.gen.yaml tmp/_gen/openapi.gen.yaml && diff -u dto/dto.gen.go tmp/_gen/dto.gen.go && sqlc diff || \
+		{ echo "generated code is stale: run 'make generate'" >&2; exit 1; }
+	@echo "generated code: up to date"
 
 db-up: ## start dev + test Postgres and wait until healthy
 	docker compose up -d --wait db db-test
@@ -45,7 +57,7 @@ run: ## run the API against the dev DB
 lint-layers: ## check layer import boundaries on all .go files
 	./.claude/hooks/check-all.sh
 
-check: lint-layers ## full Definition of Done check (no DB)
+check: lint-layers check-generated ## full Definition of Done check (no DB)
 	go vet ./...
 	go build ./...
 	go test ./...

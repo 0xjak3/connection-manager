@@ -1,0 +1,37 @@
+openapi: 3.0.3
+info:
+  title: connection_manager API
+  version: 0.1.0
+  description: |
+    HTTP API of connection_manager. Every error response uses the `ErrorResponse`
+    envelope. Error codes:
+
+    - `invalid_request` (400): the request shape is wrong (malformed JSON, missing or
+      unsupported Content-Type, field validation failed).
+    - `http_error`: a transport-level error with its own status (e.g. 400 `invalid id`).
+    - `validation_error` (400): the business rules rejected the request.
+    - `not_found` (404), `conflict` (409), `invalid_state` (409), `forbidden` (403).
+    - `internal_error` (500): unexpected failure; the message is generic.
+
+tags:
+  - name: health
+  - name: users
+
+paths:
+  /healthz:
+    $ref: ./paths/healthz.yaml
+  /api/v1/users:
+    $ref: ./paths/users.yaml
+  /api/v1/users/{id}:
+    $ref: ./paths/users_id.yaml
+
+components:
+  schemas:
+    HealthResponse: { $ref: ./schemas/common.yaml#/HealthResponse }
+    ErrorResponse: { $ref: ./schemas/common.yaml#/ErrorResponse }
+    ErrorBody: { $ref: ./schemas/common.yaml#/ErrorBody }
+    CreateUserRequest: { $ref: ./schemas/user.yaml#/CreateUserRequest }
+    UpdateUserRequest: { $ref: ./schemas/user.yaml#/UpdateUserRequest }
+    User: { $ref: ./schemas/user.yaml#/User }
+    UserResponse: { $ref: ./schemas/user.yaml#/UserResponse }
+    UserListResponse: { $ref: ./schemas/user.yaml#/UserListResponse }

@@ -7,7 +7,7 @@ Arrows point inward to `domain`. `domain` depends on nothing in the project.
 | Layer | May import (project packages) | Must NOT import |
 |---|---|---|
 | `domain` | — (stdlib + small pure libs like `google/uuid`) | any other project package, fiber, pgx, sqlcgen, `database/sql`, `net/http` |
-| `dto` | — (stdlib only) | any project package |
+| `dto` | — (generated; stdlib + `github.com/oapi-codegen/runtime/types`) | any project package |
 | `handler` | `usecase`, `domain`, `dto` | `repository`, `service`, `router`, `util`, `sqlcgen`, pgx |
 | `router` | `handler`, `dto` | `repository`, `service`, `usecase`, `util`, pgx |
 | `usecase` | `domain` | `handler`, `dto`, `router`, `repository`, `service`, `util`, fiber, pgx |
@@ -29,7 +29,7 @@ Arrows point inward to `domain`. `domain` depends on nothing in the project.
 
 ## Naming and files
 
-- One aggregate per file in each layer: `domain/connection.go`, `repository/connection.go`, `usecase/connection.go`, `handler/connection.go`, `dto/connection.go`, `db/queries/connections.sql`.
+- One aggregate per file in each layer: `domain/connection.go`, `repository/connection.go`, `usecase/connection.go`, `handler/connection.go`, `db/queries/connections.sql`. dto is generated into one file, `dto/dto.gen.go`.
 - Types carry the layer name: `usecase.ConnectionUsecase`, `repository.ConnectionRepository`, `handler.ConnectionHandler`, `service.XxxService`.
 - Keep layer packages flat. Only split a layer into sub-packages when it grows past ~10 files, and ask first.
 

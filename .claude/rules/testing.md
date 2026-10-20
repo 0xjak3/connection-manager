@@ -12,7 +12,7 @@ paths:
 | `usecase` | unit, required | hand-written fakes for the ports, in the `_test.go` file | — |
 | `handler` | unit, required for each endpoint | `fiber.New(handler.FiberConfig())` + `app.Test(httptest.NewRequest(...))` with a fake usecase; assert status + JSON body | — |
 | `handler/errors.go` | unit, required | one case per row of the error table | — |
-| `router` | unit, required | table test: every route is registered (a request to it does not return 404/405). Build `Handlers` from real handlers with fake usecases, never nil pointers | — |
+| `router` | unit, required | table test of `METHOD path` pairs checked against `app.GetRoutes(true)`. Build `Handlers` with real handler constructors given `nil` usecases (`handler.NewUserHandler(nil)`), never nil handler pointers. Router may not import `usecase`, so it has no fakes; behaviour is covered by handler tests and e2e | — |
 | `service` | unit, when it has logic | error translation, defaults; no network (use `httptest.Server` for HTTP clients) | — |
 | `repository` | integration, required for each query | real Postgres, migrations applied, tables truncated per test | `integration` |
 | `test/e2e/` | end-to-end, **required and written first** (`tdd.md`) | real binary + throwaway Postgres container, HTTP only (`e2e.md`) | `e2e` |

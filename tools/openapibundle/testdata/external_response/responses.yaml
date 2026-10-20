@@ -1,0 +1,6 @@
+Ok:
+  description: The thing.
+  content:
+    application/json:
+      schema:
+        $ref: ./schemas/thing.yaml#/Thing

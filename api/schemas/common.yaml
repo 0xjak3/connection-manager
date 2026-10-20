@@ -1,0 +1,35 @@
+HealthResponse:
+  type: object
+  additionalProperties: false
+  required: [status]
+  properties:
+    status:
+      type: string
+      enum: [ok]
+
+ErrorResponse:
+  type: object
+  additionalProperties: false
+  required: [error]
+  properties:
+    error:
+      $ref: "#/ErrorBody"
+
+ErrorBody:
+  type: object
+  additionalProperties: false
+  required: [code, message]
+  properties:
+    code:
+      type: string
+      enum:
+        - invalid_request
+        - http_error
+        - validation_error
+        - not_found
+        - conflict
+        - invalid_state
+        - forbidden
+        - internal_error
+    message:
+      type: string

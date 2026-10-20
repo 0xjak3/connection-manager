@@ -34,7 +34,7 @@ func (h *UserHandler) Create(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.Status(fiber.StatusCreated).JSON(dto.DataResponse[dto.UserResponse]{Data: toUserResponse(user)})
+	return c.Status(fiber.StatusCreated).JSON(dto.UserResponse{Data: toUser(user)})
 }
 
 func (h *UserHandler) List(c fiber.Ctx) error {
@@ -42,7 +42,7 @@ func (h *UserHandler) List(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(dto.DataResponse[[]dto.UserResponse]{Data: toUserResponses(users)})
+	return c.JSON(dto.UserListResponse{Data: toUsers(users)})
 }
 
 func (h *UserHandler) Get(c fiber.Ctx) error {
@@ -54,7 +54,7 @@ func (h *UserHandler) Get(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(dto.DataResponse[dto.UserResponse]{Data: toUserResponse(user)})
+	return c.JSON(dto.UserResponse{Data: toUser(user)})
 }
 
 func (h *UserHandler) Update(c fiber.Ctx) error {
@@ -70,7 +70,7 @@ func (h *UserHandler) Update(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(dto.DataResponse[dto.UserResponse]{Data: toUserResponse(user)})
+	return c.JSON(dto.UserResponse{Data: toUser(user)})
 }
 
 func (h *UserHandler) Delete(c fiber.Ctx) error {

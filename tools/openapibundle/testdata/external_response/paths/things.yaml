@@ -1,0 +1,5 @@
+get:
+  operationId: getThing
+  responses:
+    "200":
+      $ref: ../responses.yaml#/Ok

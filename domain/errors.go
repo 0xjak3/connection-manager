@@ -14,8 +14,9 @@ var (
 	ErrForbidden    = errors.New("forbidden")
 )
 
-// Entity-specific errors.
+// user
 var (
 	ErrUserNotFound = fmt.Errorf("user %w", ErrNotFound)
-	ErrEmailTaken   = fmt.Errorf("email already taken: %w", ErrConflict)
+	ErrEmailTaken   = fmt.Errorf("%w: email already taken", ErrConflict)
+	ErrNoChanges    = fmt.Errorf("%w: at least one of email or password is required", ErrValidation)
 )

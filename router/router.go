@@ -5,6 +5,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 
+	"connection_manager/dto"
 	"connection_manager/handler"
 )
 
@@ -15,10 +16,7 @@ type Handlers struct {
 
 // New creates the Fiber app and registers every route.
 func New(h Handlers) *fiber.App {
-	app := fiber.New(fiber.Config{
-		ErrorHandler:    handler.ErrorHandler,
-		StructValidator: handler.NewStructValidator(),
-	})
+	app := fiber.New(handler.FiberConfig())
 	app.Use(recover.New())
 	app.Use(logger.New())
 
@@ -35,5 +33,5 @@ func New(h Handlers) *fiber.App {
 }
 
 func healthz(c fiber.Ctx) error {
-	return c.JSON(fiber.Map{"status": "ok"})
+	return c.JSON(dto.HealthResponse{Status: dto.HealthResponseStatusOk})
 }
